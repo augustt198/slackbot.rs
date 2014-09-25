@@ -1,0 +1,8 @@
+[package]
+
+name = "slackbot"
+version = "0.0.1"
+authors = ["August <augustt198@gmail.com>"]
+
+[dependencies.http]
+git = "https://github.com/chris-morgan/rust-http"
