@@ -70,7 +70,7 @@ impl Server for SlackBot {
 
     fn handle_request(&self, req: Request, resp: &mut ResponseWriter) {
         // yeah... it's bad                 vvvvvvvvvvvvvv
-        let url = match Url::parse(format!("http://a.com{}", req.request_uri).as_slice()) {
+        let url = match Url::parse(format!("http://placeholder.com?{}", req.body).as_slice()) {
             Ok(url) => url,
             Err(_) => {
                 println!("Could not parse request URL: {}", req.request_uri);
