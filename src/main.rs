@@ -15,42 +15,52 @@ struct SlackCommand {
     timestamp:      f64,
     username:       String,
     text:           String,
-    args:           Vec<String>
+    args:           Vec<String>,
+
+    response:       Vec<String>
 }
 
-trait Callable: Send + Sync {
-    fn call(&self, cmd: &mut SlackCommand);
-}
-
-
-impl Callable for fn(&mut SlackCommand) {
-    fn call(&self, cmd: &mut SlackCommand) {
-        (*self)(cmd);
+impl SlackCommand {
+    fn reply(&mut self, string: &str) {
+        self.response.push(string.to_string());
     }
 }
 
-impl Callable for Box<Callable + Send + Sync> {
-    fn call(&self, cmd: &mut SlackCommand) {
-        self.call(cmd);
+struct CommandManager {
+    commands: HashMap<String, fn(&mut SlackCommand)>
+}
+
+impl CommandManager {
+    fn register(&mut self, name: String, func: fn(&mut SlackCommand)) {
+        self.commands.insert(name, func);
+    }
+
+    fn handle(&mut self, name: String, cmd: &mut SlackCommand) -> Option<Vec<String>> {
+        match self.commands.find(& name) {
+            Some(func) => (*func)(cmd),
+            None => return None
+        }
+
+        Some(cmd.response.clone())
     }
 }
 
-impl Clone for Box<Callable + Send + Sync> {
-    fn clone(&self) -> Box<Callable + Send + Sync> {
-        self.clone()
+impl Clone for CommandManager { 
+    // Can't clone the command map directly for some reason
+    fn clone(&self) -> CommandManager {
+        let mut map: HashMap<String, fn(&mut SlackCommand)> = HashMap::new();
+        for (string, func) in self.commands.iter() {
+            map.insert(string.clone(), *func);
+        }
+        CommandManager { commands: map }
     }
 }
+
 
 #[deriving(Clone)]
 struct SlackBot {
     port: int,
-    commands: HashMap<String, Box<Callable + Send + Sync>>
-}
-
-impl SlackBot {
-    fn register_command(&mut self, name: &str, func: fn(&mut SlackCommand)) {
-        self.commands.insert(name.to_string(), box func);
-    }
+    manager: CommandManager
 }
 
 impl Server for SlackBot {
@@ -59,14 +69,6 @@ impl Server for SlackBot {
     }
 
     fn handle_request(&self, req: Request, resp: &mut ResponseWriter) {
-        resp.headers.content_type = Some(MediaType {
-            type_: "application".to_string(),
-            subtype: "json".to_string(),
-            parameters: vec![]
-        });
-        
-        resp.write(b"{\"text\":\"test post please ignore\"}");
-
         // yeah... it's bad                 vvvvvvvvvvvvvv
         let url = match Url::parse(format!("http://a.com{}", req.request_uri).as_slice()) {
             Ok(url) => url,
@@ -90,14 +92,34 @@ impl Server for SlackBot {
         // map_in_place doesn't work because elements are not the same size
         let mut args1: Vec<String> = Vec::from_fn(args0.len(), |i| args0[i].to_string());
         args1.remove(0); // shift() is deprecated
+        let command = match args1.remove(0) {
+            Some(cmd) => cmd,
+            None => "".to_string()
+        };
 
-        let slack_req = SlackCommand {
+        let mut slack_cmd = SlackCommand {
             channel_name: map.find(& String::from_str("channel_name")).unwrap().clone(),
             timestamp: from_str(map.find(& String::from_str("timestamp")).unwrap().as_slice()).unwrap(),
             username: map.find(& String::from_str("user_name")).unwrap().clone(),
             text: text.clone(),
-            args: args1
+            args: args1,
+
+            response: vec![]
         };
+
+        let response = match self.manager.clone().handle(command.clone(), &mut slack_cmd) {
+            Some(v) => v,
+            None => vec![format!("Command not found: {}", command.clone()).to_string()]
+        };
+        
+        resp.headers.content_type = Some(MediaType {
+            type_: "application".to_string(),
+            subtype: "json".to_string(),
+            parameters: vec![]
+        });
+
+        let bytes = format!("{{\"text\": \"{}\"}}", response.connect("\n")).into_bytes();
+        resp.write(bytes.as_slice()).unwrap();
     }
 }
 
@@ -127,10 +149,16 @@ fn main() {
 
     println!("Starting server on port {}", port);
 
-    let slackbot = SlackBot {
+    let mut slackbot = SlackBot {
         port: port,
-        commands: HashMap::new()
+        manager: CommandManager { commands: HashMap::new() }
     };
+
+    fn test_command(cmd: &mut SlackCommand) {
+        cmd.reply("It works!");
+    }
+
+    slackbot.manager.register("test".to_string(), test_command);
 
     slackbot.serve_forever();
 }
