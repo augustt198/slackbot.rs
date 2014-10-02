@@ -1,13 +1,17 @@
 extern crate http;
 extern crate url;
+extern crate serialize;
 
 use std::io::net::ip::{SocketAddr, Ipv4Addr};
-use std::collections::HashMap;
+use std::collections::{HashMap, TreeMap};
 
 use url::Url;
 
 use http::server::{Config, Server, Request, ResponseWriter};
 use http::headers::content_type::MediaType;
+
+use serialize::json;
+use serialize::json::ToJson;
 
 #[allow(dead_code)]
 struct SlackCommand {
@@ -15,40 +19,74 @@ struct SlackCommand {
     timestamp:      f64,
     username:       String,
     text:           String,
-    args:           Vec<String>,
-
-    response:       Vec<String>
+    args:           Vec<String>
 }
 
-impl SlackCommand {
+struct SlackResponse {
+    username:   Option<String>,
+    icon_url:   Option<String>,
+    icon_emoji: Option<String>,
+
+    response:   Vec<String>
+}
+
+impl SlackResponse {
+    fn to_json(&self, bot: &SlackBot) -> String {
+        let mut map = TreeMap::new();
+
+        map.insert("text".to_string(), self.response.connect("\n").to_json());
+        if self.icon_url.is_some() {
+            map.insert("icon_url".to_string(), self.icon_url.to_json());
+        } else if bot.icon_url.is_some() {
+            map.insert("icon_url".to_string(), bot.icon_url.to_json());
+        }
+
+        if self.icon_emoji.is_some() {
+            map.insert("icon_emoji".to_string(), self.icon_emoji.to_json());
+        } else if bot.icon_emoji.is_some() {
+            map.insert("icon_emoji".to_string(), bot.icon_emoji.to_json());
+        }
+
+        if self.username.is_some() {
+            map.insert("username".to_string(), self.username.to_json());
+        } else if bot.username.is_some() {
+            map.insert("username".to_string(), bot.username.to_json());
+        }
+
+        format!("{}", json::Object(map))
+    }
+
     fn reply(&mut self, string: &str) {
         self.response.push(string.to_string());
     }
 }
 
 struct CommandManager {
-    commands: HashMap<String, fn(&mut SlackCommand)>
+    commands: HashMap<String, fn(&mut SlackCommand, &mut SlackResponse)>
 }
 
 impl CommandManager {
-    fn register(&mut self, name: String, func: fn(&mut SlackCommand)) {
+    fn register(&mut self, name: String, func: fn(&mut SlackCommand, &mut SlackResponse)) {
         self.commands.insert(name, func);
     }
 
-    fn handle(&mut self, name: String, cmd: &mut SlackCommand) -> Option<Vec<String>> {
+    fn handle(&mut self, name: String, cmd: &mut SlackCommand, resp: &mut SlackResponse) -> Option<Vec<String>> {
         match self.commands.find(& name) {
-            Some(func) => (*func)(cmd),
-            None => return None
+            Some(func) => (*func)(cmd, resp),
+            None => {
+                resp.reply(format!("Command not found: {}", name).as_slice());
+                return None
+            }
         }
 
-        Some(cmd.response.clone())
+        Some(resp.response.clone())
     }
 }
 
 impl Clone for CommandManager { 
     // Can't clone the command map directly for some reason
     fn clone(&self) -> CommandManager {
-        let mut map: HashMap<String, fn(&mut SlackCommand)> = HashMap::new();
+        let mut map: HashMap<String, fn(&mut SlackCommand, &mut SlackResponse)> = HashMap::new();
         for (string, func) in self.commands.iter() {
             map.insert(string.clone(), *func);
         }
@@ -60,7 +98,11 @@ impl Clone for CommandManager {
 #[deriving(Clone)]
 struct SlackBot {
     port: int,
-    manager: CommandManager
+    manager: CommandManager,
+
+    username:    Option<String>,
+    icon_url:    Option<String>,
+    icon_emoji:  Option<String>
 }
 
 impl Server for SlackBot {
@@ -69,7 +111,7 @@ impl Server for SlackBot {
     }
 
     fn handle_request(&self, req: Request, resp: &mut ResponseWriter) {
-        // yeah... it's bad                 vvvvvvvvvvvvvv
+        // `placeholder.com` because Url::parse wants a complete URL.
         let url = match Url::parse(format!("http://placeholder.com?{}", req.body).as_slice()) {
             Ok(url) => url,
             Err(_) => {
@@ -98,28 +140,32 @@ impl Server for SlackBot {
         };
 
         let mut slack_cmd = SlackCommand {
-            channel_name: map.find(& String::from_str("channel_name")).unwrap().clone(),
-            timestamp: from_str(map.find(& String::from_str("timestamp")).unwrap().as_slice()).unwrap(),
-            username: map.find(& String::from_str("user_name")).unwrap().clone(),
-            text: text.clone(),
-            args: args1,
-
-            response: vec![]
+            channel_name:   map.find(& String::from_str("channel_name")).unwrap().clone(),
+            timestamp:      from_str(map.find(& String::from_str("timestamp")).unwrap().as_slice()).unwrap(),
+            username:       map.find(& String::from_str("user_name")).unwrap().clone(),
+            text:           text.clone(),
+            args:           args1
         };
 
-        let response = match self.manager.clone().handle(command.clone(), &mut slack_cmd) {
-            Some(v) => v,
-            None => vec![format!("Command not found: {}", command.clone()).to_string()]
+        let mut slack_response = SlackResponse {
+            response:   vec![],
+
+            username:   None,
+            icon_url:   None,
+            icon_emoji: None
         };
-        
+
+        self.manager.clone().handle(command.clone(), &mut slack_cmd, &mut slack_response);
+
+        let resp_text = slack_response.to_json(self);
+
         resp.headers.content_type = Some(MediaType {
             type_: "application".to_string(),
             subtype: "json".to_string(),
             parameters: vec![]
         });
 
-        let bytes = format!("{{\"text\": \"{}\"}}", response.connect("\n")).into_bytes();
-        resp.write(bytes.as_slice()).unwrap();
+        resp.write(resp_text.into_bytes().as_slice()).unwrap();
     }
 }
 
@@ -151,14 +197,18 @@ fn main() {
 
     let mut slackbot = SlackBot {
         port: port,
-        manager: CommandManager { commands: HashMap::new() }
+        manager: CommandManager { commands: HashMap::new() },
+
+        username: None,
+        icon_emoji: None,
+        icon_url: None
     };
 
-    fn test_command(cmd: &mut SlackCommand) {
-        cmd.reply("It works!");
+    fn version_command(cmd: &mut SlackCommand, resp: &mut SlackResponse) {
+        resp.reply("slackbot.rs version 0.1");
     }
 
-    slackbot.manager.register("test".to_string(), test_command);
+    slackbot.manager.register("version".to_string(), version_command);
 
     slackbot.serve_forever();
 }
