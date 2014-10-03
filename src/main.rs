@@ -117,6 +117,10 @@ impl SlackBot {
             icon_emoji: None
         }
     }
+
+    pub fn start(self) {
+        self.serve_forever();
+    }
 }
 
 impl Server for SlackBot {
