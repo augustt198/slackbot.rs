@@ -14,7 +14,7 @@ git = "https://github.com/augustt198/slackbot.rs"
 Inside the main function, create a new `SlackBot` struct using `Slackbot::new(port: int)`:
 
 ```rust
-let slackbot = SlackBot::new(8080);
+let mut slackbot = SlackBot::new(8080);
 slackbot.username   = Some(...);    // Your bot's username    (optional)
 slackbot.icon_emoji = Some(...);    // Your bot's icon emoji  (optional)
 slackbot.icon_url   = Some(...);    // Your bot's url emoji   (optional)
