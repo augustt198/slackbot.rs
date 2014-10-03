@@ -33,7 +33,7 @@ slackbot.manager.register("test".to_string(), test_command);
 Finally, start the bot:
 
 ```rust
-slackbot.serve_forever();
+slackbot.start();
 ```
 
 ---
