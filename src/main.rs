@@ -15,19 +15,19 @@ use serialize::json::ToJson;
 
 #[allow(dead_code)]
 pub struct SlackCommand {
-    channel_name:   String,
-    timestamp:      f64,
-    username:       String,
-    text:           String,
-    args:           Vec<String>
+    pub channel_name:   String,
+    pub timestamp:      f64,
+    pub username:       String,
+    pub text:           String,
+    pub args:           Vec<String>
 }
 
 pub struct SlackResponse {
-    username:   Option<String>,
-    icon_url:   Option<String>,
-    icon_emoji: Option<String>,
+    pub username:   Option<String>,
+    pub icon_url:   Option<String>,
+    pub icon_emoji: Option<String>,
 
-    response:   Vec<String>
+    pub response:   Vec<String>
 }
 
 impl SlackResponse {
@@ -62,7 +62,7 @@ impl SlackResponse {
 }
 
 pub struct CommandManager {
-    commands: HashMap<String, fn(&mut SlackCommand, &mut SlackResponse)>
+    pub commands: HashMap<String, fn(&mut SlackCommand, &mut SlackResponse)>
 }
 
 impl CommandManager {
@@ -97,12 +97,12 @@ impl Clone for CommandManager {
 
 #[deriving(Clone)]
 pub struct SlackBot {
-    port: int,
-    manager: CommandManager,
+    pub port: int,
+    pub manager: CommandManager,
 
-    username:    Option<String>,
-    icon_url:    Option<String>,
-    icon_emoji:  Option<String>
+    pub username:    Option<String>,
+    pub icon_url:    Option<String>,
+    pub icon_emoji:  Option<String>
 }
 
 impl SlackBot {
