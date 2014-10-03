@@ -14,7 +14,7 @@ use serialize::json;
 use serialize::json::ToJson;
 
 #[allow(dead_code)]
-struct SlackCommand {
+pub struct SlackCommand {
     channel_name:   String,
     timestamp:      f64,
     username:       String,
@@ -22,7 +22,7 @@ struct SlackCommand {
     args:           Vec<String>
 }
 
-struct SlackResponse {
+pub struct SlackResponse {
     username:   Option<String>,
     icon_url:   Option<String>,
     icon_emoji: Option<String>,
@@ -31,7 +31,7 @@ struct SlackResponse {
 }
 
 impl SlackResponse {
-    fn to_json(&self, bot: &SlackBot) -> String {
+    pub fn to_json(&self, bot: &SlackBot) -> String {
         let mut map = TreeMap::new();
 
         map.insert("text".to_string(), self.response.connect("\n").to_json());
@@ -56,21 +56,21 @@ impl SlackResponse {
         format!("{}", json::Object(map))
     }
 
-    fn reply(&mut self, string: &str) {
+    pub fn reply(&mut self, string: &str) {
         self.response.push(string.to_string());
     }
 }
 
-struct CommandManager {
+pub struct CommandManager {
     commands: HashMap<String, fn(&mut SlackCommand, &mut SlackResponse)>
 }
 
 impl CommandManager {
-    fn register(&mut self, name: String, func: fn(&mut SlackCommand, &mut SlackResponse)) {
+    pub fn register(&mut self, name: String, func: fn(&mut SlackCommand, &mut SlackResponse)) {
         self.commands.insert(name, func);
     }
 
-    fn handle(&mut self, name: String, cmd: &mut SlackCommand, resp: &mut SlackResponse) -> Option<Vec<String>> {
+    pub fn handle(&mut self, name: String, cmd: &mut SlackCommand, resp: &mut SlackResponse) -> Option<Vec<String>> {
         match self.commands.find(& name) {
             Some(func) => (*func)(cmd, resp),
             None => {
@@ -96,7 +96,7 @@ impl Clone for CommandManager {
 
 
 #[deriving(Clone)]
-struct SlackBot {
+pub struct SlackBot {
     port: int,
     manager: CommandManager,
 
@@ -107,7 +107,7 @@ struct SlackBot {
 
 impl SlackBot {
     #[allow(dead_code)]
-    fn new(port: int) -> SlackBot {
+    pub fn new(port: int) -> SlackBot {
         SlackBot {
             port:       port,
             manager:    CommandManager { commands: HashMap::new() },
