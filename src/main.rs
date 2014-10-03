@@ -177,6 +177,7 @@ fn pairs_to_hashmap(pairs: Vec<(String, String)>) -> HashMap<String, String> {
     map
 }
 
+#[allow(dead_code)]
 fn main() {
     let args = std::os::args();
 
@@ -204,6 +205,7 @@ fn main() {
         icon_url: None
     };
 
+    #[allow(unused_variable)]
     fn version_command(cmd: &mut SlackCommand, resp: &mut SlackResponse) {
         resp.reply("slackbot.rs version 0.1");
     }
