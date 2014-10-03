@@ -15,9 +15,9 @@ Inside the main function, create a new `SlackBot` struct using `Slackbot::new(po
 
 ```rust
 let slackbot = SlackBot::new(8080);
-slackbot.username   = Some("...");    // Your bot's username    (optional)
-slackbot.icon_emoji = Some("...");    // Your bot's icon emoji  (optional)
-slackbot.icon_url   = Some("...");    // Your bot's url emoji   (optional)
+slackbot.username   = Some(...);    // Your bot's username    (optional)
+slackbot.icon_emoji = Some(...);    // Your bot's icon emoji  (optional)
+slackbot.icon_url   = Some(...);    // Your bot's url emoji   (optional)
 ```
 
 Any function with the `fn(&mut SlackCommand, &mut SlackResponse)` signature can be registered as a command:
