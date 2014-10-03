@@ -105,6 +105,20 @@ struct SlackBot {
     icon_emoji:  Option<String>
 }
 
+impl SlackBot {
+    #[allow(dead_code)]
+    fn new(port: int) -> SlackBot {
+        SlackBot {
+            port:       port,
+            manager:    CommandManager { commands: HashMap::new() },
+
+            username:   None,
+            icon_url:   None,
+            icon_emoji: None
+        }
+    }
+}
+
 impl Server for SlackBot {
     fn get_config(&self) -> Config {
         Config { bind_address: SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: self.port as u16 } }
