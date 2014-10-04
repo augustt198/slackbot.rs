@@ -158,9 +158,9 @@ impl Server for SlackBot {
         };
 
         let mut slack_cmd = SlackCommand {
-            channel_name:   map.find(& String::from_str("channel_name")).unwrap().clone(),
-            timestamp:      from_str(map.find(& String::from_str("timestamp")).unwrap().as_slice()).unwrap(),
-            username:       map.find(& String::from_str("user_name")).unwrap().clone(),
+            channel_name:   map.find(&"channel_name".to_string()).unwrap().clone(),
+            timestamp:      from_str(map.find(&"timestamp".to_string()).unwrap().as_slice()).unwrap(),
+            username:       map.find(&"user_name".to_string()).unwrap().clone(),
             text:           text.clone(),
             args:           args1
         };
