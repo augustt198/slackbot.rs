@@ -22,6 +22,33 @@ pub struct SlackCommand {
     pub args:           Vec<String>
 }
 
+#[allow(dead_code)]
+impl SlackCommand {
+    fn join_after(&self, index: uint) -> String {
+        let mut string = String::new();
+        for i in range(index, self.args.len()) {
+            string.push_str(self.args[i].as_slice());
+        }
+        string
+    }
+
+    fn int_arg(&self, index: uint) -> Option<int> {
+        if index >= self.args.len() {
+            None
+        } else {
+            from_str(self.args[index].as_slice())
+        }
+    }
+
+    fn safe_arg(&self, index: uint) -> Option<String> {
+        if index >= self.args.len() {
+            None
+        } else {
+            Some(self.args[index].clone())
+        }
+    }
+}
+
 pub struct SlackResponse {
     pub username:   Option<String>,
     pub icon_url:   Option<String>,
