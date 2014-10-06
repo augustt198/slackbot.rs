@@ -24,7 +24,7 @@ pub struct SlackCommand {
 
 #[allow(dead_code)]
 impl SlackCommand {
-    fn join_after(&self, index: uint) -> String {
+    pub fn join_after(&self, index: uint) -> String {
         let mut string = String::new();
         for i in range(index, self.args.len()) {
             string.push_str(self.args[i].as_slice());
@@ -32,7 +32,7 @@ impl SlackCommand {
         string
     }
 
-    fn int_arg(&self, index: uint) -> Option<int> {
+    pub fn int_arg(&self, index: uint) -> Option<int> {
         if index >= self.args.len() {
             None
         } else {
@@ -40,7 +40,7 @@ impl SlackCommand {
         }
     }
 
-    fn safe_arg(&self, index: uint) -> Option<String> {
+    pub fn safe_arg(&self, index: uint) -> Option<String> {
         if index >= self.args.len() {
             None
         } else {
