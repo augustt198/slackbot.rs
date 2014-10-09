@@ -99,7 +99,10 @@ impl CommandManager {
 
     pub fn handle(&mut self, name: String, cmd: &mut SlackCommand, resp: &mut SlackResponse) -> Option<Vec<String>> {
         match self.commands.find(& name) {
-            Some(func) => (*func)(cmd, resp),
+            Some(func) => {
+                println!("Command: \"{}\", user: {}, arguments: {}", name, cmd.username, cmd.args);
+                (*func)(cmd, resp)
+            },
             None => {
                 resp.reply(format!("Command not found: {}", name).as_slice());
                 return None
